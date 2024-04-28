@@ -5,4 +5,7 @@ urlpatterns = [
     path("signin/",views.signin),
     path("signup/",views.signup),
     path("authenticate/",views.authenticate),
+    path("getallposts/",views.getallposts),
+    path("addnewpost/",views.addnewpost),
+    path("ownprofile/",views.ownprofile),
 ]

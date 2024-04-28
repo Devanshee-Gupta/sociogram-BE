@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.sessions.models import Session
-from .serializers import UsersSerializer
+from .serializers import CommentSerializer, PostSerializer, UsersSerializer
 from .models import *
 from django.contrib.auth.hashers import check_password
 # from db_connection import user_collection
@@ -98,5 +98,111 @@ def authenticate(request):
     }
     return Response(response,status=200)
 
+@csrf_exempt
+@api_view(['Post'])
+def getallposts(request):
+    session_key=request.data["session_key"]
 
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
 
+    posts = Post.objects.all().order_by("-create_time","-post_id")
+    postSerializer = PostSerializer(posts, many=True)
+    
+    list=[]
+    for i in postSerializer.data:
+        this_post=Post.objects.get(post_id=i["post_id"])
+        post_user=Users.objects.get(user_id=i["user"])
+        comments=Comment.objects.filter(post=this_post)[:3]
+        commentSerializer = CommentSerializer(comments, many=True)
+        comments_list=[]
+        for j in commentSerializer.data:
+            comment_user=Users.objects.get(user_id=j["commented_user"])
+            j["comment_username"]=comment_user.user_name
+            comments_list.append(j)
+        
+        i["comments"]=comments_list
+        i["post_username"]=post_user.user_name
+        list.append(i)
+
+    response={
+        "Data": list,
+    }
+    return Response(response, status=200)
+
+@csrf_exempt
+@api_view(['Post'])
+def addnewpost(request):
+    session_key=request.data["session_key"]
+
+    # Extract individual fields from FormData
+    caption = request.data.get("formData[caption]")
+    tags = request.data.get("formData[tags]")
+    image = request.FILES.get("formData[image]")
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+    user=Users.objects.filter(email=email)[0]
+
+    user_id=user.user_id
+
+    if not image:
+        return Response({"error": "Image file is required."}, status=400)
+
+    data={
+        "caption": caption,
+        "tags":tags,
+        "image":image,
+        "user":user_id
+    }
+
+    postSerializer = PostSerializer(data=data)
+
+    if postSerializer.is_valid():
+        postSerializer.save()
+        return Response({"message":"Post uploaded successfully"},status=201)
+    else:
+        return Response({"error":postSerializer.errors},status=400)
+
+@csrf_exempt
+@api_view(['Post'])
+def ownprofile(request):
+    session_key=request.data["session_key"]
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+    user=Users.objects.filter(email=email)[0]
+
+    posts = Post.objects.filter(user=user).order_by("-create_time","-post_id")
+    postSerializer = PostSerializer(posts, many=True)
+
+    list=[]
+    for i in postSerializer.data:
+        this_post=Post.objects.get(post_id=i["post_id"])
+        comments=Comment.objects.filter(post=this_post)[:3]
+        commentSerializer = CommentSerializer(comments, many=True)
+        comments_list=[]
+        for j in commentSerializer.data:
+            comment_user=Users.objects.get(user_id=j["commented_user"])
+            j["comment_username"]=comment_user.user_name
+            comments_list.append(j)
+        
+        i["comments"]=comments_list
+        i["post_username"]=user.user_name
+        list.append(i)
+
+    response={
+        "Data": list,
+    }
+    return Response(response, status=200)
