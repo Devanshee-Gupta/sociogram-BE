@@ -19,7 +19,8 @@ class Users(models.Model):
         ])
 
     no_of_posts = models.IntegerField(default=0, null=True, blank=True)
-
+    name = models.TextField(max_length=50,null=True,blank=True)
+    bio = models.TextField(max_length=150,null=True,blank=True)
     def save(self, *args, **kwargs):
         if not self.password.startswith(('pbkdf2_sha256$', 'bcrypt$', 'argon2$')):
             self.password = make_password(self.password)

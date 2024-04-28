@@ -1,3 +1,4 @@
+import pwd
 from django.utils import timezone
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -182,7 +183,17 @@ def ownprofile(request):
     session = Session.objects.get(session_key=session_key)
     session_data = session.get_decoded()
     email=session_data['email']
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
     user=Users.objects.filter(email=email)[0]
+    
+    usersSerializer = UsersSerializer(user)
 
     posts = Post.objects.filter(user=user).order_by("-create_time","-post_id")
     postSerializer = PostSerializer(posts, many=True)
@@ -203,6 +214,121 @@ def ownprofile(request):
         list.append(i)
 
     response={
-        "Data": list,
+        "Data": {
+            "profile_data" : usersSerializer.data,
+            "posts_data" : list,
+        }
     }
     return Response(response, status=200)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def editprofile(request):
+    session_key=request.data["session_key"]
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
+    user=Users.objects.filter(email=email)[0]
+
+    # Extract individual fields
+    name = request.data["name"]
+    bio = request.data["bio"]
+    user.name = name
+    user.bio = bio
+    user.save()
+    return Response({"message":"Profile updated successfully"}, status=200)
+
+@csrf_exempt
+@api_view(['POST'])
+def changepassword(request):
+    session_key=request.data["session_key"]
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
+    user=Users.objects.filter(email=email)[0]
+
+     # Extract individual fields
+    password = request.data["password"]
+    confirm_password = request.data["confirm_password"]
+
+    hash_pwd = make_password(password)
+    user.password = pwd
+    user.save()
+
+@csrf_exempt
+@api_view(['POST'])
+def othersprofile(request,userid):
+    session_key=request.data["session_key"]
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
+    user=Users.objects.filter(user_id=userid)[0]
+    usersSerializer = UsersSerializer(user)
+
+    posts = Post.objects.filter(user=user).order_by("-create_time","-post_id")
+    postSerializer = PostSerializer(posts, many=True)
+
+    list=[]
+    for i in postSerializer.data:
+        this_post=Post.objects.get(post_id=i["post_id"])
+        comments=Comment.objects.filter(post=this_post)[:3]
+        commentSerializer = CommentSerializer(comments, many=True)
+        comments_list=[]
+        for j in commentSerializer.data:
+            comment_user=Users.objects.get(user_id=j["commented_user"])
+            j["comment_username"]=comment_user.user_name
+            comments_list.append(j)
+        
+        i["comments"]=comments_list
+        i["post_username"]=user.user_name
+        list.append(i)
+
+    response={
+        "Data": {
+            "profile_data" : usersSerializer.data,
+            "posts_data" : list,
+        }
+    }
+    return Response(response, status=200)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def logout(request):
+    
+    session=Session.objects.get(session_key=request.data["session_key"])
+    response={
+        "success": True,
+        "message": "Session Deleted succesfully!"
+    }
+    if session is None:
+        response['success']=False,
+        response['error']='User not found!'
+        return Response(response,status.HTTP_404_NOT_FOUND)
+    session.delete()
+    return Response(response,status.HTTP_204_NO_CONTENT)
