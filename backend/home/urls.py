@@ -10,6 +10,6 @@ urlpatterns = [
     path("ownprofile/",views.ownprofile),
     path("editprofile/",views.editprofile),
     path("changepassword/",views.changepassword),
-    path(":userid/profile/",views.othersprofile),
+    path("<str:userid>/profile/", views.othersprofile),
     path("logout/",views.logout),
 ]

@@ -240,8 +240,8 @@ def editprofile(request):
     user=Users.objects.filter(email=email)[0]
 
     # Extract individual fields
-    name = request.data["name"]
-    bio = request.data["bio"]
+    name = request.data["formData"]["name"]
+    bio = request.data["formData"]["bio"]
     user.name = name
     user.bio = bio
     user.save()
@@ -265,12 +265,16 @@ def changepassword(request):
     user=Users.objects.filter(email=email)[0]
 
      # Extract individual fields
-    password = request.data["password"]
-    confirm_password = request.data["confirm_password"]
+    password = request.data["formData"]["password"]
+    confirm_password = request.data["formData"]["confirm_password"]
 
-    hash_pwd = make_password(password)
-    user.password = pwd
+    if not password.startswith(('pbkdf2_sha256$', 'bcrypt$', 'argon2$')):
+        hash_pwd = make_password(password)
+        user.password = hash_pwd
+    else:
+        user.password = password
     user.save()
+    return Response({"message":"Password updated successfully"}, status=200)
 
 @csrf_exempt
 @api_view(['POST'])
