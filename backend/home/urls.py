@@ -11,5 +11,8 @@ urlpatterns = [
     path("editprofile/",views.editprofile),
     path("changepassword/",views.changepassword),
     path("<str:userid>/profile/", views.othersprofile),
+    path("addtolist/",views.addtolist),
+    path("getlistelements/",views.getlistelements),
+    path("deletefromlist/",views.deletefromlist),
     path("logout/",views.logout),
 ]

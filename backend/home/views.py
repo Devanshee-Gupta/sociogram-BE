@@ -6,7 +6,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.sessions.models import Session
-from .serializers import CommentSerializer, PostSerializer, UsersSerializer
+from .serializers import CommentSerializer, PostSerializer, SavedCollectionSerializer, SavedItemSerializer, UsersSerializer
 from .models import *
 from django.contrib.auth.hashers import check_password
 # from db_connection import user_collection
@@ -245,7 +245,7 @@ def editprofile(request):
     user.name = name
     user.bio = bio
     user.save()
-    return Response({"message":"Profile updated successfully"}, status=200)
+    return Response({"message":"Profile updated successfully"}, status=201)
 
 @csrf_exempt
 @api_view(['POST'])
@@ -274,7 +274,7 @@ def changepassword(request):
     else:
         user.password = password
     user.save()
-    return Response({"message":"Password updated successfully"}, status=200)
+    return Response({"message":"Password updated successfully"}, status=201)
 
 @csrf_exempt
 @api_view(['POST'])
@@ -319,6 +319,111 @@ def othersprofile(request,userid):
         }
     }
     return Response(response, status=200)
+
+
+@csrf_exempt
+@api_view(['POST'])
+def addtolist(request):
+    session_key=request.data["session_key"]
+    post_id=request.data["post_id"]
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "error": "Please login"
+            }
+        return Response(response,status=401)
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not Users.objects.filter(email=email).exists):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    if(not Post.objects.filter(post_id=post_id).exists):
+        return Response({"error":"Post Does Not Exist"},status=400)
+    post=Post.objects.filter(post_id=post_id)[0]
+
+    saved_collection=SavedCollection.objects.filter(user=user)[0]
+    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post).exists()):
+        SavedItem.objects.create(saved_collection=saved_collection,post=post)
+        saved_collection.no_of_posts+=1
+        saved_collection.save()
+        return Response({"message":"Post saved successfully"},status=201)
+    else:
+        return Response({"error":"Post is already saved"},status=400)
+
+@csrf_exempt
+@api_view(['DELETE'])
+def deletefromlist(request):
+    post_id=request.data["post_id"]
+    session_key=request.data["session_key"]
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "error": "Please login"
+            }
+        return Response(response,status=401)
+    
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not Users.objects.filter(email=email).exists):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    if(not Post.objects.filter(post_id=post_id).exists):
+        return Response({"error":"Post Does Not Exist"},status=400)
+    post=Post.objects.filter(post_id=post_id)[0]
+
+    saved_collection=SavedCollection.objects.filter(user=user)[0]
+    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post).exists):
+        return Response({"error":"Post is already not saved"},status=400)
+    else:
+        SavedItem.objects.filter(saved_collection=saved_collection,post=post).delete()
+        saved_collection.no_of_posts-=1
+        saved_collection.save()
+        return Response({"error":"Post removed successfully"},status=201)
+
+@csrf_exempt
+@api_view(['Post'])
+def getlistelements(request):
+    session_key=request.data["session_key"]
+
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "message": "Please login"
+            }
+        return Response(response,status=401)
+    
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not Users.objects.filter(email=email).exists):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    saved_collection=SavedCollection.objects.filter(user=user)[0]
+    alllistelement = SavedItem.objects.filter(saved_collection=saved_collection)
+    itemSerializer = SavedItemSerializer(alllistelement, many=True)
+    
+    for i in itemSerializer.data:
+        temp_post_id=i['post_id']
+        temp_post=Post.objects.filter(post_id=temp_post_id)[0]
+        postSerializer=PostSerializer(temp_post)
+        i['post_id']=postSerializer.data
+
+    collectionSerializer=SavedCollectionSerializer(saved_collection)
+    response={
+        "postData": itemSerializer.data,
+        "collectionData": collectionSerializer.data,
+    }
+    return Response(response,status=200)   
+
 
 
 @csrf_exempt
