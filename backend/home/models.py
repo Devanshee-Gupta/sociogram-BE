@@ -71,7 +71,15 @@ class SavedItem(models.Model):
     class Meta:
         db_table = 'saved_item'
 
+class LikedPost(models.Model):
+    liked_post_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(Users,on_delete=models.CASCADE)
+    post = models.ForeignKey(Post,on_delete=models.CASCADE)
 
+
+    class Meta:
+        db_table = 'liked_post'
+        unique_together = ('user','post')
 
 # p=Post(user=u,
 #        image_url="https://imgs.search.brave.com/UU4ZeFRJ0IFPQX9uyBh5bXVhb8Z3rAGF1FxJ7ggSCfc/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvMTE2/NzkyMTY1Ny9waG90/by9wYW5vcmFtaWMt/YWVyaWFsLXZpZXct/b2YtZ2VybWFuLWxh/bmRzY2FwZS1yaGVp/bmdhdS10YXVudXMt/YXJlYS5qcGc_cz02/MTJ4NjEyJnc9MCZr/PTIwJmM9MkRqLVZf/YURkLVRzcEtVUFY2/WEdxY2Nial9rbGF5/VjBrRlphYi1KZmN4/TT0",
