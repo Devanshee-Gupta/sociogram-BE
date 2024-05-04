@@ -103,6 +103,9 @@ def authenticate(request):
 @api_view(['Post'])
 def getallposts(request):
     session_key=request.data["session_key"]
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
 
     if(not validation(session_key)):
         response={
@@ -110,7 +113,8 @@ def getallposts(request):
                 "message": "Please login"
             }
         return Response(response,status=401)
-
+    
+    user=Users.objects.filter(email=email)[0]
     posts = Post.objects.all().order_by("-create_time","-post_id")
     postSerializer = PostSerializer(posts, many=True)
     
@@ -128,6 +132,12 @@ def getallposts(request):
         
         i["comments"]=comments_list
         i["post_username"]=post_user.user_name
+
+        liked_post=LikedPost.objects.filter(user=user,post=this_post)
+        if(liked_post):
+            i['has_liked']="true"
+        else:
+            i['has_liked']="false"
         list.append(i)
 
     response={
@@ -336,16 +346,16 @@ def addtolist(request):
     session_data = session.get_decoded()
     email=session_data['email']
 
-    if(not Users.objects.filter(email=email).exists):
+    if(not Users.objects.filter(email=email)):
         return Response({"error":"User Does Not Exist"},status=400)
     
     user=Users.objects.filter(email=email)[0]
-    if(not Post.objects.filter(post_id=post_id).exists):
+    if(not Post.objects.filter(post_id=post_id)):
         return Response({"error":"Post Does Not Exist"},status=400)
     post=Post.objects.filter(post_id=post_id)[0]
 
     saved_collection=SavedCollection.objects.filter(user=user)[0]
-    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post).exists()):
+    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post)):
         SavedItem.objects.create(saved_collection=saved_collection,post=post)
         saved_collection.no_of_posts+=1
         saved_collection.save()
@@ -370,16 +380,16 @@ def deletefromlist(request):
     session_data = session.get_decoded()
     email=session_data['email']
 
-    if(not Users.objects.filter(email=email).exists):
+    if(not Users.objects.filter(email=email)):
         return Response({"error":"User Does Not Exist"},status=400)
     
     user=Users.objects.filter(email=email)[0]
-    if(not Post.objects.filter(post_id=post_id).exists):
+    if(not Post.objects.filter(post_id=post_id)):
         return Response({"error":"Post Does Not Exist"},status=400)
     post=Post.objects.filter(post_id=post_id)[0]
 
     saved_collection=SavedCollection.objects.filter(user=user)[0]
-    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post).exists):
+    if(not SavedItem.objects.filter(saved_collection=saved_collection,post=post)):
         return Response({"error":"Post is already not saved"},status=400)
     else:
         SavedItem.objects.filter(saved_collection=saved_collection,post=post).delete()
@@ -403,7 +413,7 @@ def getlistelements(request):
     session_data = session.get_decoded()
     email=session_data['email']
 
-    if(not Users.objects.filter(email=email).exists):
+    if(not Users.objects.filter(email=email)):
         return Response({"error":"User Does Not Exist"},status=400)
     
     user=Users.objects.filter(email=email)[0]
@@ -423,6 +433,68 @@ def getlistelements(request):
         "collectionData": collectionSerializer.data,
     }
     return Response(response,status=200)   
+
+
+@csrf_exempt
+@api_view(['POST'])
+def likepost(request):
+    session_key=request.data["session_key"]
+    post_id=request.data["post_id"]
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "error": "Please login"
+            }
+        return Response(response,status=401)
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    if(not Post.objects.filter(post_id=post_id)):
+        return Response({"error":"Post Does Not Exist"},status=400)
+
+    post=Post.objects.filter(post_id=post_id)[0]
+
+    if(not LikedPost.objects.filter(user=user,post=post)):
+        LikedPost.objects.create(user=user,post=post)
+        return Response({"message":"Post liked successfully"},status=201)
+    else:
+        return Response({"error":"Post is already liked"},status=400)
+
+
+@csrf_exempt
+@api_view(['DELETE'])
+def unlikepost(request):
+    session_key=request.data["session_key"]
+    post_id=request.data["post_id"]
+    if(not validation(session_key)):
+        response={
+                "success": False,
+                "error": "Please login"
+            }
+        return Response(response,status=401)
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    if(not Post.objects.filter(post_id=post_id)):
+        return Response({"error":"Post Does Not Exist"},status=400)
+
+    post=Post.objects.filter(post_id=post_id)[0]
+
+    if(not LikedPost.objects.filter(user=user,post=post)):
+        return Response({"error":"Post is already not liked"},status=400)
+    else:
+        LikedPost.objects.filter(user=user,post=post).delete()
+        return Response({"message":"Post is unliked successfully"},status=201)
 
 
 

@@ -14,5 +14,7 @@ urlpatterns = [
     path("addtolist/",views.addtolist),
     path("getlistelements/",views.getlistelements),
     path("deletefromlist/",views.deletefromlist),
+    path("likepost/",views.likepost),
+    path("unlikepost/",views.unlikepost),
     path("logout/",views.logout),
 ]
