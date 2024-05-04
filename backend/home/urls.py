@@ -17,4 +17,5 @@ urlpatterns = [
     path("likepost/",views.likepost),
     path("unlikepost/",views.unlikepost),
     path("logout/",views.logout),
+    path("deleteaccount/",views.deleteaccount),
 ]

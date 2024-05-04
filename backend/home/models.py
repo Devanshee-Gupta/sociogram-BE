@@ -29,8 +29,6 @@ class Users(models.Model):
     class Meta:
         db_table = 'user'
 
-
-
 class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(Users,on_delete=models.CASCADE)

@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.sessions.models import Session
-from .serializers import CommentSerializer, PostSerializer, SavedCollectionSerializer, SavedItemSerializer, UsersSerializer
+from .serializers import PostSerializer, SavedCollectionSerializer, SavedItemSerializer, UsersSerializer
 from .models import *
 from django.contrib.auth.hashers import check_password
 # from db_connection import user_collection
@@ -120,15 +120,6 @@ def getallposts(request):
     for i in postSerializer.data:
         this_post=Post.objects.get(post_id=i["post_id"])
         post_user=Users.objects.get(user_id=i["user"])
-        comments=Comment.objects.filter(post=this_post)[:3]
-        commentSerializer = CommentSerializer(comments, many=True)
-        comments_list=[]
-        for j in commentSerializer.data:
-            comment_user=Users.objects.get(user_id=j["commented_user"])
-            j["comment_username"]=comment_user.user_name
-            comments_list.append(j)
-        
-        i["comments"]=comments_list
         i["post_username"]=post_user.user_name
 
         liked_post=LikedPost.objects.filter(user=user,post=this_post)
@@ -216,16 +207,21 @@ def ownprofile(request):
     list=[]
     for i in postSerializer.data:
         this_post=Post.objects.get(post_id=i["post_id"])
-        comments=Comment.objects.filter(post=this_post)[:3]
-        commentSerializer = CommentSerializer(comments, many=True)
-        comments_list=[]
-        for j in commentSerializer.data:
-            comment_user=Users.objects.get(user_id=j["commented_user"])
-            j["comment_username"]=comment_user.user_name
-            comments_list.append(j)
-        
-        i["comments"]=comments_list
         i["post_username"]=user.user_name
+
+        liked_post=LikedPost.objects.filter(user=user,post=this_post)
+        if(liked_post):
+            i['has_liked']="true"
+        else:
+            i['has_liked']="false"
+
+        saved_collection=SavedCollection.objects.filter(user=user)[0]
+        saved_post=SavedItem.objects.filter(saved_collection=saved_collection,post=this_post)
+        if(saved_post):
+            i['has_saved']="true"
+        else:
+            i['has_saved']="false"
+
         list.append(i)
 
     response={
@@ -317,16 +313,20 @@ def othersprofile(request,userid):
     list=[]
     for i in postSerializer.data:
         this_post=Post.objects.get(post_id=i["post_id"])
-        comments=Comment.objects.filter(post=this_post)[:3]
-        commentSerializer = CommentSerializer(comments, many=True)
-        comments_list=[]
-        for j in commentSerializer.data:
-            comment_user=Users.objects.get(user_id=j["commented_user"])
-            j["comment_username"]=comment_user.user_name
-            comments_list.append(j)
-        
-        i["comments"]=comments_list
         i["post_username"]=user.user_name
+
+        liked_post=LikedPost.objects.filter(user=user,post=this_post)
+        if(liked_post):
+            i['has_liked']="true"
+        else:
+            i['has_liked']="false"
+
+        saved_collection=SavedCollection.objects.filter(user=user)[0]
+        saved_post=SavedItem.objects.filter(saved_collection=saved_collection,post=this_post)
+        if(saved_post):
+            i['has_saved']="true"
+        else:
+            i['has_saved']="false"
         list.append(i)
 
     response={
@@ -520,3 +520,27 @@ def logout(request):
         return Response(response,status.HTTP_404_NOT_FOUND)
     session.delete()
     return Response(response,status.HTTP_204_NO_CONTENT)
+
+
+@csrf_exempt
+@api_view(['DELETE'])
+def deleteaccount(request):
+    
+    session=Session.objects.get(session_key=request.data["session_key"])
+    response={}
+    if session is None:
+        response['success']=False,
+        response['error']='User not found!'
+        return Response(response,status.HTTP_404_NOT_FOUND)
+
+    session_data = session.get_decoded()
+    email=session_data['email']
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
+    user=Users.objects.filter(email=email)[0]
+    saved_collection=SavedCollection.objects.filter(user=user)[0]
+    user.delete()
+    saved_collection.delete()
+    session.delete()
+    return Response({"message": "Account deleted successfully!"},status.HTTP_204_NO_CONTENT)

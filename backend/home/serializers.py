@@ -12,10 +12,6 @@ class PostSerializer(ModelSerializer):
         model = Post
         fields = '__all__'
 
-class CommentSerializer(ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = '__all__'
 
 class SavedCollectionSerializer(ModelSerializer):
     class Meta:
