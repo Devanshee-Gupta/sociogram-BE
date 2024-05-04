@@ -70,6 +70,7 @@ class SavedItem(models.Model):
 
     class Meta:
         db_table = 'saved_item'
+        unique_together = ('saved_collection','post')
 
 class LikedPost(models.Model):
     liked_post_id = models.AutoField(primary_key=True)

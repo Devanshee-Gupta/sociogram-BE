@@ -1,4 +1,3 @@
-import pwd
 from django.utils import timezone
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -35,7 +34,7 @@ def signup(request):
         return Response({"message":"User created successfully"},status=201)
     else:
         return Response({"error":serializer.errors},status=400)
-    
+
 @csrf_exempt
 @api_view(['POST'])
 def signin(request):
@@ -84,7 +83,6 @@ def signin(request):
         }
     return Response(response,status=401)
 
-
 @api_view(['POST'])
 def authenticate(request):
     session_key=request.data["session_key"]
@@ -100,12 +98,9 @@ def authenticate(request):
     return Response(response,status=200)
 
 @csrf_exempt
-@api_view(['Post'])
+@api_view(['POST'])
 def getallposts(request):
     session_key=request.data["session_key"]
-    session = Session.objects.get(session_key=session_key)
-    session_data = session.get_decoded()
-    email=session_data['email']
 
     if(not validation(session_key)):
         response={
@@ -114,6 +109,9 @@ def getallposts(request):
             }
         return Response(response,status=401)
     
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
     user=Users.objects.filter(email=email)[0]
     posts = Post.objects.all().order_by("-create_time","-post_id")
     postSerializer = PostSerializer(posts, many=True)
@@ -138,6 +136,13 @@ def getallposts(request):
             i['has_liked']="true"
         else:
             i['has_liked']="false"
+
+        saved_collection=SavedCollection.objects.filter(user=user)[0]
+        saved_post=SavedItem.objects.filter(saved_collection=saved_collection,post=this_post)
+        if(saved_post):
+            i['has_saved']="true"
+        else:
+            i['has_saved']="false"
         list.append(i)
 
     response={
@@ -146,7 +151,7 @@ def getallposts(request):
     return Response(response, status=200)
 
 @csrf_exempt
-@api_view(['Post'])
+@api_view(['POST'])
 def addnewpost(request):
     session_key=request.data["session_key"]
 
@@ -187,12 +192,9 @@ def addnewpost(request):
         return Response({"error":postSerializer.errors},status=400)
 
 @csrf_exempt
-@api_view(['Post'])
+@api_view(['POST'])
 def ownprofile(request):
     session_key=request.data["session_key"]
-    session = Session.objects.get(session_key=session_key)
-    session_data = session.get_decoded()
-    email=session_data['email']
 
     if(not validation(session_key)):
         response={
@@ -201,6 +203,9 @@ def ownprofile(request):
             }
         return Response(response,status=401)
     
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
     user=Users.objects.filter(email=email)[0]
     
     usersSerializer = UsersSerializer(user)
@@ -231,15 +236,11 @@ def ownprofile(request):
     }
     return Response(response, status=200)
 
-
 @csrf_exempt
 @api_view(['POST'])
 def editprofile(request):
     session_key=request.data["session_key"]
-    session = Session.objects.get(session_key=session_key)
-    session_data = session.get_decoded()
-    email=session_data['email']
-
+    
     if(not validation(session_key)):
         response={
                 "success": False,
@@ -247,6 +248,10 @@ def editprofile(request):
             }
         return Response(response,status=401)
     
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
     user=Users.objects.filter(email=email)[0]
 
     # Extract individual fields
@@ -261,9 +266,7 @@ def editprofile(request):
 @api_view(['POST'])
 def changepassword(request):
     session_key=request.data["session_key"]
-    session = Session.objects.get(session_key=session_key)
-    session_data = session.get_decoded()
-    email=session_data['email']
+    
 
     if(not validation(session_key)):
         response={
@@ -272,6 +275,10 @@ def changepassword(request):
             }
         return Response(response,status=401)
     
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
     user=Users.objects.filter(email=email)[0]
 
      # Extract individual fields
@@ -290,17 +297,17 @@ def changepassword(request):
 @api_view(['POST'])
 def othersprofile(request,userid):
     session_key=request.data["session_key"]
-    session = Session.objects.get(session_key=session_key)
-    session_data = session.get_decoded()
-    email=session_data['email']
-
+    
     if(not validation(session_key)):
         response={
                 "success": False,
                 "message": "Please login"
             }
         return Response(response,status=401)
-    
+    session = Session.objects.get(session_key=session_key)
+    session_data = session.get_decoded()
+    email=session_data['email']
+
     user=Users.objects.filter(user_id=userid)[0]
     usersSerializer = UsersSerializer(user)
 
@@ -329,7 +336,6 @@ def othersprofile(request,userid):
         }
     }
     return Response(response, status=200)
-
 
 @csrf_exempt
 @api_view(['POST'])
@@ -398,7 +404,7 @@ def deletefromlist(request):
         return Response({"error":"Post removed successfully"},status=201)
 
 @csrf_exempt
-@api_view(['Post'])
+@api_view(['POST'])
 def getlistelements(request):
     session_key=request.data["session_key"]
 
@@ -434,7 +440,6 @@ def getlistelements(request):
     }
     return Response(response,status=200)   
 
-
 @csrf_exempt
 @api_view(['POST'])
 def likepost(request):
@@ -461,10 +466,11 @@ def likepost(request):
 
     if(not LikedPost.objects.filter(user=user,post=post)):
         LikedPost.objects.create(user=user,post=post)
+        post.no_of_likes+=1
+        post.save()
         return Response({"message":"Post liked successfully"},status=201)
     else:
         return Response({"error":"Post is already liked"},status=400)
-
 
 @csrf_exempt
 @api_view(['DELETE'])
@@ -494,8 +500,9 @@ def unlikepost(request):
         return Response({"error":"Post is already not liked"},status=400)
     else:
         LikedPost.objects.filter(user=user,post=post).delete()
+        post.no_of_likes-=1
+        post.save()
         return Response({"message":"Post is unliked successfully"},status=201)
-
 
 
 @csrf_exempt
