@@ -45,16 +45,6 @@ class Post(models.Model):
         db_table = 'post'
 
 
-class Comment(models.Model):
-    comment_id = models.AutoField(primary_key=True)
-    post= models.ForeignKey(Post,on_delete=models.CASCADE)
-    commented_user= models.OneToOneField(Users,on_delete=models.CASCADE)
-    commented_text=models.TextField(max_length=250)
-
-    class Meta:
-        db_table = 'comment'
-
-
 class SavedCollection(models.Model):
     saved_collection_id = models.AutoField(primary_key=True)
     user = models.OneToOneField(Users,on_delete=models.CASCADE)
@@ -81,12 +71,3 @@ class LikedPost(models.Model):
     class Meta:
         db_table = 'liked_post'
         unique_together = ('user','post')
-
-# p=Post(user=u,
-#        image_url="https://imgs.search.brave.com/UU4ZeFRJ0IFPQX9uyBh5bXVhb8Z3rAGF1FxJ7ggSCfc/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9tZWRp/YS5nZXR0eWltYWdl/cy5jb20vaWQvMTE2/NzkyMTY1Ny9waG90/by9wYW5vcmFtaWMt/YWVyaWFsLXZpZXct/b2YtZ2VybWFuLWxh/bmRzY2FwZS1yaGVp/bmdhdS10YXVudXMt/YXJlYS5qcGc_cz02/MTJ4NjEyJnc9MCZr/PTIwJmM9MkRqLVZf/YURkLVRzcEtVUFY2/WEdxY2Nial9rbGF5/VjBrRlphYi1KZmN4/TT0",
-#        caption="panoramic aerial view of german landscape - rheingau-taunus area")
-        # lovely #nature #scenery #2024
-        
-# c=Comment(post=p,commented_user=u,commented_text="Trueee !!!")
-        
-# INSERT INTO "main"."post" ("post_id", "image_url", "create_time", "caption", "tags", "no_of_likes", "no_of_comments", "user_id") VALUES ('1', 'https://imgs.search.brave.com/-afbGQLMisWUGlpyKoT3x2BTJAcmszX6zllYH_wypdE/rs:fit:500:0:0/g:ce/aHR0cHM6Ly9idXJz/dC5zaG9waWZ5Y2Ru/LmNvbS9waG90b3Mv/bGVuc2JhbGwteWVs/bG93LWFuZC1vcmFu/Z2UtbGlnaHRzLmpw/Zz93aWR0aD0xMDAw/JmZvcm1hdD1wanBn/JmV4aWY9MCZpcHRj/PTA', '2024-03-14', 'Darkness cannot drive out darkness: only light can do that. Hate cannot drive out hate: only love can do that.', '', '0', '1', '1');

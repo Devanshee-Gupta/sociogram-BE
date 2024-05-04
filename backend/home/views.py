@@ -401,7 +401,7 @@ def deletefromlist(request):
         SavedItem.objects.filter(saved_collection=saved_collection,post=post).delete()
         saved_collection.no_of_posts-=1
         saved_collection.save()
-        return Response({"error":"Post removed successfully"},status=201)
+        return Response({"message":"Post removed successfully"},status=201)
 
 @csrf_exempt
 @api_view(['POST'])
