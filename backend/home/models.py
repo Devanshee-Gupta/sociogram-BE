@@ -37,7 +37,6 @@ class Post(models.Model):
     caption = models.TextField(max_length=400)
     tags = models.TextField(max_length=200,null=True,blank=True)
     no_of_likes=models.IntegerField(default=0,null=True)
-    no_of_comments=models.IntegerField(default=0,null=True)
 
     class Meta:
         db_table = 'post'

@@ -8,6 +8,7 @@ from django.contrib.sessions.models import Session
 from .serializers import PostSerializer, SavedCollectionSerializer, SavedItemSerializer, UsersSerializer
 from .models import *
 from django.contrib.auth.hashers import check_password
+import re
 # from db_connection import user_collection
 # Create your views here.
 
@@ -112,6 +113,10 @@ def getallposts(request):
     session = Session.objects.get(session_key=session_key)
     session_data = session.get_decoded()
     email=session_data['email']
+
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+
     user=Users.objects.filter(email=email)[0]
     posts = Post.objects.all().order_by("-create_time","-post_id")
     postSerializer = PostSerializer(posts, many=True)
@@ -160,6 +165,10 @@ def addnewpost(request):
     session = Session.objects.get(session_key=session_key)
     session_data = session.get_decoded()
     email=session_data['email']
+
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
     user=Users.objects.filter(email=email)[0]
 
     user_id=user.user_id
@@ -178,6 +187,8 @@ def addnewpost(request):
 
     if postSerializer.is_valid():
         postSerializer.save()
+        user.no_of_posts+=1
+        user.save()
         return Response({"message":"Post uploaded successfully"},status=201)
     else:
         return Response({"error":postSerializer.errors},status=400)
@@ -197,6 +208,10 @@ def ownprofile(request):
     session = Session.objects.get(session_key=session_key)
     session_data = session.get_decoded()
     email=session_data['email']
+
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
     user=Users.objects.filter(email=email)[0]
     
     usersSerializer = UsersSerializer(user)
@@ -233,7 +248,7 @@ def ownprofile(request):
     return Response(response, status=200)
 
 @csrf_exempt
-@api_view(['POST'])
+@api_view(['PATCH'])
 def editprofile(request):
     session_key=request.data["session_key"]
     
@@ -248,13 +263,19 @@ def editprofile(request):
     session_data = session.get_decoded()
     email=session_data['email']
 
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
     user=Users.objects.filter(email=email)[0]
 
     # Extract individual fields
-    name = request.data["formData"]["name"]
-    bio = request.data["formData"]["bio"]
-    user.name = name
-    user.bio = bio
+    if "formData" in request.data:
+        formData = request.data["formData"]
+    if "name" in formData:
+        if(formData["name"] != "") :
+            user.name = formData["name"]
+    if "bio" in formData:
+        if(formData["bio"] != "") :
+            user.bio = formData["bio"]
     user.save()
     return Response({"message":"Profile updated successfully"}, status=201)
 
@@ -263,7 +284,6 @@ def editprofile(request):
 def changepassword(request):
     session_key=request.data["session_key"]
     
-
     if(not validation(session_key)):
         response={
                 "success": False,
@@ -274,20 +294,30 @@ def changepassword(request):
     session = Session.objects.get(session_key=session_key)
     session_data = session.get_decoded()
     email=session_data['email']
-
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
     user=Users.objects.filter(email=email)[0]
 
      # Extract individual fields
-    password = request.data["formData"]["password"]
-    confirm_password = request.data["formData"]["confirm_password"]
 
-    if not password.startswith(('pbkdf2_sha256$', 'bcrypt$', 'argon2$')):
-        hash_pwd = make_password(password)
-        user.password = hash_pwd
+    regex = r'^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{5,}$'
+
+    password = request.data["formData"]["password"]
+
+    if re.match(regex, password):
+        confirm_password = request.data["formData"]["confirm_password"]
+        if password == confirm_password:
+            if not password.startswith(('pbkdf2_sha256$', 'bcrypt$', 'argon2$')): 
+                hash_pwd = make_password(password)
+                user.password = hash_pwd
+            else:
+                user.password = password
+            user.save()
+            return Response({"message":"Password updated successfully"}, status=201)
+        else:
+            return Response({"error":"Re-entered Password is not same"}, status=400)
     else:
-        user.password = password
-    user.save()
-    return Response({"message":"Password updated successfully"}, status=201)
+        return Response({"error":"Password must have minimum 5 characters, atleast 1 uppercase, 1 special character and 1 number"}, status=400)
 
 @csrf_exempt
 @api_view(['POST'])
@@ -304,6 +334,9 @@ def othersprofile(request,userid):
     session_data = session.get_decoded()
     email=session_data['email']
 
+    if(not Users.objects.filter(email=email)):
+        return Response({"error":"User Does Not Exist"},status=400)
+    
     user=Users.objects.filter(user_id=userid)[0]
     usersSerializer = UsersSerializer(user)
 
@@ -504,7 +537,6 @@ def unlikepost(request):
         post.save()
         return Response({"message":"Post is unliked successfully"},status=201)
 
-
 @csrf_exempt
 @api_view(['POST'])
 def logout(request):
@@ -520,7 +552,6 @@ def logout(request):
         return Response(response,status.HTTP_404_NOT_FOUND)
     session.delete()
     return Response(response,status.HTTP_204_NO_CONTENT)
-
 
 @csrf_exempt
 @api_view(['DELETE'])
@@ -539,6 +570,12 @@ def deleteaccount(request):
         return Response({"error":"User Does Not Exist"},status=400)
     
     user=Users.objects.filter(email=email)[0]
+    all_liked_posts=LikedPost.objects.filter(user=user)
+    for i in all_liked_posts:
+        post = Post.objects.filter(post_id=i.post_id)[0]
+        post.no_of_likes-=1
+        post.save()
+    
     saved_collection=SavedCollection.objects.filter(user=user)[0]
     user.delete()
     saved_collection.delete()

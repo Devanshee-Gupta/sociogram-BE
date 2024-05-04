@@ -85,25 +85,23 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    # "default": {
-    #     "ENGINE": "django.db.backends.sqlite3",
-    #     "NAME": BASE_DIR / "db.sqlite3",
-    # }
+from decouple import config
 
+DATABASES = {
     'default': {
         'ENGINE': 'djongo',
         'NAME': 'sociogram',
         'Client':{
-            'HOST': 'mongodb+srv://devansheegupta:ink7HeKWEC4D0EyP@mongodb-cluster.yfjuvfb.mongodb.net/?retryWrites=true&w=majority&appName=MongoDB-Cluster',
-            'USER': 'devansheegupta',
-            'PASSWORD': 'ink7HeKWEC4D0EyP',
+            'HOST': 'mongodb+srv://{}:{}@mongodb-cluster.yfjuvfb.mongodb.net/?retryWrites=true&w=majority&appName=MongoDB-Cluster'.format(
+                config('MONGO_USER'),
+                config('MONGO_PASSWORD')
+            ),
+            'USER': config('MONGO_USER'),
+            'PASSWORD': config('MONGO_PASSWORD'),
         }
     }
-
-
-
 }
+
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
